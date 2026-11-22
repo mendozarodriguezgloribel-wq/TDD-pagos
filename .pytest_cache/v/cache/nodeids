@@ -1,4 +1,13 @@
 [
   "tests/test_proceso_pago.py::TestApprovedPayment::test_approved_payment_is_saved_and_returned",
-  "tests/test_process_payment.py::TestApprovedPayment::test_approved_payment_is_saved_and_returned"
+  "tests/test_process_payment.py::TestApprovedPayment::test_approved_payment_is_saved_and_returned",
+  "tests/test_process_payment.py::TestDeclinedPayment::test_declined_payment_is_saved_without_receipt",
+  "tests/test_process_payment.py::TestReceipt::test_receipt_is_sent_once_when_payment_is_approved",
+  "tests/test_process_payment.py::TestValidation::test_accepts_currency_added_by_injection",
+  "tests/test_process_payment.py::TestValidation::test_rejects_invalid_amount_without_calling_dependencies[50.0]",
+  "tests/test_process_payment.py::TestValidation::test_rejects_invalid_amount_without_calling_dependencies[50]",
+  "tests/test_process_payment.py::TestValidation::test_rejects_invalid_amount_without_calling_dependencies[invalid_amount0]",
+  "tests/test_process_payment.py::TestValidation::test_rejects_invalid_amount_without_calling_dependencies[invalid_amount1]",
+  "tests/test_process_payment.py::TestValidation::test_rejects_unsupported_currency[XYZ]",
+  "tests/test_process_payment.py::TestValidation::test_rejects_unsupported_currency[usd]"
 ]

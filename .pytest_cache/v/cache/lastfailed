@@ -1,3 +1,10 @@
 {
-  "tests/test_proceso_pago.py::TestApprovedPayment": true
+  "tests/test_proceso_pago.py::TestApprovedPayment": true,
+  "tests/test_process_payment.py::TestValidation::test_rejects_invalid_amount_without_calling_dependencies[invalid_amount0]": true,
+  "tests/test_process_payment.py::TestValidation::test_rejects_invalid_amount_without_calling_dependencies[invalid_amount1]": true,
+  "tests/test_process_payment.py::TestValidation::test_rejects_invalid_amount_without_calling_dependencies[50.0]": true,
+  "tests/test_process_payment.py::TestValidation::test_rejects_invalid_amount_without_calling_dependencies[50]": true,
+  "tests/test_process_payment.py::TestValidation::test_rejects_unsupported_currency[XYZ]": true,
+  "tests/test_process_payment.py::TestValidation::test_rejects_unsupported_currency[usd]": true,
+  "tests/test_process_payment.py::TestValidation::test_accepts_currency_added_by_injection": true
 }
