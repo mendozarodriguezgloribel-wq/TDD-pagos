@@ -1,9 +1,17 @@
+import logging
 from decimal import Decimal
 from typing import FrozenSet, Optional
 
-from .exceptions import InvalidAmountError, UnsupportedCurrencyError
+from .exceptions import (
+    GatewayUnavailableError,
+    InvalidAmountError,
+    PaymentProcessingError,
+    UnsupportedCurrencyError,
+)
 from .models import GatewayResponse, Payment, PaymentStatus
 from .ports import PaymentGateway, PaymentRepository, ReceiptNotifier
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CURRENCIES: FrozenSet[str] = frozenset({"USD", "EUR", "DOP"})
 
@@ -12,8 +20,8 @@ class PaymentService:
     """Orquesta el cobro de una orden sobre dependencias inyectadas."""
 
     def __init__(self, gateway: PaymentGateway, repository: PaymentRepository,
-                 notifier: ReceiptNotifier,
-                 supported_currencies: FrozenSet[str] = DEFAULT_CURRENCIES) -> None:
+                notifier: ReceiptNotifier,
+                supported_currencies: FrozenSet[str] = DEFAULT_CURRENCIES) -> None:
         self._gateway = gateway
         self._repository = repository
         self._notifier = notifier
@@ -27,11 +35,25 @@ class PaymentService:
         if already_paid:
             return already_paid
 
-        response = self._gateway.charge(amount, currency, card_token)
+        try:
+            response = self._gateway.charge(amount, currency, card_token)
+        except GatewayUnavailableError as exc:
+            raise PaymentProcessingError("Pasarela no disponible.") from exc
+
         payment = self._to_payment(order_id, amount, currency, response)
-        self._repository.save(payment)
+
+        try:
+            self._repository.save(payment)
+        except Exception as exc:
+            raise PaymentProcessingError("Error al guardar el pago.") from exc
+
         if payment.is_approved:
-            self._notifier.send_receipt(payment)
+            try:
+                self._notifier.send_receipt(payment)
+            except Exception:
+                # El cobro ya se realizó y se guardó: un fallo de correo no lo revierte
+                logger.warning("No se pudo enviar el recibo de la orden %s.",
+                            order_id, exc_info=True)
         return payment
 
     def _validate(self, amount: Decimal, currency: str) -> None:

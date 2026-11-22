@@ -1,6 +1,3 @@
 {
-  "tests/test_proceso_pago.py::TestApprovedPayment": true,
-  "tests/test_process_payment.py::TestExternalFailures::test_gateway_unavailable_raises_processing_error": true,
-  "tests/test_process_payment.py::TestExternalFailures::test_repository_failure_raises_processing_error_without_receipt": true,
-  "tests/test_process_payment.py::TestExternalFailures::test_receipt_failure_does_not_break_approved_payment": true
+  "tests/test_proceso_pago.py::TestApprovedPayment": true
 }
