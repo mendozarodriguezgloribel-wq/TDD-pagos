@@ -1,0 +1,3 @@
+{
+  "tests/test_proceso_pago.py::TestApprovedPayment": true
+}
