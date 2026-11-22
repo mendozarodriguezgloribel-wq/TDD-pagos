@@ -21,11 +21,15 @@ class PaymentService:
 
     def __init__(self, gateway: PaymentGateway, repository: PaymentRepository,
                 notifier: ReceiptNotifier,
-                supported_currencies: FrozenSet[str] = DEFAULT_CURRENCIES) -> None:
+                supported_currencies: FrozenSet[str] = DEFAULT_CURRENCIES,
+                max_retries: int = 2) -> None:
+        if max_retries < 0:
+            raise ValueError("max_retries no puede ser negativo.")
         self._gateway = gateway
         self._repository = repository
         self._notifier = notifier
         self._supported_currencies = supported_currencies
+        self._max_retries = max_retries
 
     def process_payment(self, order_id: str, amount: Decimal,
                         currency: str, card_token: str) -> Payment:
@@ -54,10 +58,15 @@ class PaymentService:
         return existing if existing and existing.is_approved else None
 
     def _charge(self, amount: Decimal, currency: str, card_token: str) -> GatewayResponse:
-        try:
-            return self._gateway.charge(amount, currency, card_token)
-        except GatewayUnavailableError as exc:
-            raise PaymentProcessingError("Pasarela no disponible.") from exc
+        attempts = self._max_retries + 1
+        last_error: Optional[GatewayUnavailableError] = None
+        for _ in range(attempts):
+            try:
+                return self._gateway.charge(amount, currency, card_token)
+            except GatewayUnavailableError as exc:
+                last_error = exc
+        raise PaymentProcessingError(
+            f"Pasarela no disponible tras {attempts} intentos.") from last_error
 
     def _persist(self, payment: Payment) -> None:
         try:
