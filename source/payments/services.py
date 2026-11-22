@@ -23,6 +23,10 @@ class PaymentService:
                         currency: str, card_token: str) -> Payment:
         self._validate(amount, currency)
 
+        existing = self._repository.find_by_order_id(order_id)
+        if existing is not None and existing.status == PaymentStatus.APPROVED:
+            return existing
+
         response = self._gateway.charge(amount, currency, card_token)
         payment = self._to_payment(order_id, amount, currency, response)
         self._repository.save(payment)
