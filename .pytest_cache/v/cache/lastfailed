@@ -1,3 +1,7 @@
 {
-  "tests/test_proceso_pago.py::TestApprovedPayment": true
+  "tests/test_proceso_pago.py::TestApprovedPayment": true,
+  "tests/test_process_payment.py::TestExternalFailures::test_gateway_unavailable_raises_processing_error_after_retries": true,
+  "tests/test_process_payment.py::TestRetryPolicy::test_recovers_when_second_attempt_succeeds": true,
+  "tests/test_process_payment.py::TestRetryPolicy::test_zero_retries_means_single_attempt": true,
+  "tests/test_process_payment.py::TestRetryPolicy::test_negative_retries_is_rejected": true
 }

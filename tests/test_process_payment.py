@@ -110,7 +110,7 @@ class TestIdempotency:
 
 
 class TestExternalFailures:
-    def test_gateway_unavailable_raises_processing_error(
+    def test_gateway_unavailable_raises_processing_error_after_retries(
             self, service, gateway, repository, notifier):
         # Stub de fallo: simula una caída técnica de la pasarela
         gateway.charge.side_effect = GatewayUnavailableError("timeout")
@@ -118,7 +118,7 @@ class TestExternalFailures:
         with pytest.raises(PaymentProcessingError):
             service.process_payment("ORD-06", AMOUNT, "USD", "tok_visa")
 
-        gateway.charge.assert_called_once()
+        assert gateway.charge.call_count == 3  # REGRESIÓN: antes assert_called_once()
         repository.save.assert_not_called()
         notifier.send_receipt.assert_not_called()
 
@@ -141,3 +141,37 @@ class TestExternalFailures:
 
         assert payment.status == PaymentStatus.APPROVED
         repository.save.assert_called_once_with(payment)
+
+class TestRetryPolicy:
+    def test_recovers_when_second_attempt_succeeds(self, service, gateway, repository):
+        # Stub secuencial: primero falla y luego aprueba
+        gateway.charge.side_effect = [
+            GatewayUnavailableError("timeout"),
+            GatewayResponse(approved=True, transaction_id="txn_9"),
+        ]
+
+        payment = service.process_payment("ORD-09", AMOUNT, "USD", "tok_visa")
+
+        assert payment.status == PaymentStatus.APPROVED
+        assert gateway.charge.call_count == 2
+        repository.save.assert_called_once_with(payment)
+
+    def test_declined_payment_is_not_retried(self, service, gateway):
+        gateway.charge.return_value = GatewayResponse(approved=False, reason="stolen_card")
+
+        service.process_payment("ORD-10", AMOUNT, "USD", "tok_visa")
+
+        gateway.charge.assert_called_once()
+
+    def test_zero_retries_means_single_attempt(self, gateway, repository, notifier):
+        service = PaymentService(gateway, repository, notifier, max_retries=0)
+        gateway.charge.side_effect = GatewayUnavailableError("timeout")
+
+        with pytest.raises(PaymentProcessingError):
+            service.process_payment("ORD-11", AMOUNT, "USD", "tok_visa")
+
+        gateway.charge.assert_called_once()
+
+    def test_negative_retries_is_rejected(self, gateway, repository, notifier):
+        with pytest.raises(ValueError):
+            PaymentService(gateway, repository, notifier, max_retries=-1)
