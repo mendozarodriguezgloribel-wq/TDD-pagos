@@ -26,3 +26,6 @@ class Payment:
     status: PaymentStatus
     transaction_id: Optional[str] = None
     reason: Optional[str] = None
+    @property
+    def is_approved(self) -> bool:
+        return self.status == PaymentStatus.APPROVED
