@@ -81,3 +81,29 @@ class TestValidation:
         payment = service.process_payment("ORD-04", AMOUNT, "GBP", "tok_visa")
 
         assert payment.currency == "GBP"
+
+class TestIdempotency:
+    def test_returns_existing_approved_payment_without_charging_again(
+            self, service, gateway, repository, notifier):
+        existing = Payment("ORD-05", AMOUNT, "USD", PaymentStatus.APPROVED, "txn_old")
+        # Stub: el repositorio ya tiene un pago aprobado para la orden
+        repository.find_by_order_id.return_value = existing
+
+        payment = service.process_payment("ORD-05", AMOUNT, "USD", "tok_visa")
+
+        assert payment is existing
+        repository.find_by_order_id.assert_called_once_with("ORD-05")
+        gateway.charge.assert_not_called()
+        repository.save.assert_not_called()
+        notifier.send_receipt.assert_not_called()
+
+    def test_charges_again_when_previous_payment_was_declined(
+            self, service, gateway, repository):
+        repository.find_by_order_id.return_value = Payment(
+            "ORD-05", AMOUNT, "USD", PaymentStatus.DECLINED, reason="card_expired")
+        gateway.charge.return_value = GatewayResponse(approved=True, transaction_id="txn_new")
+
+        payment = service.process_payment("ORD-05", AMOUNT, "USD", "tok_new")
+
+        assert payment.status == PaymentStatus.APPROVED
+        gateway.charge.assert_called_once_with(AMOUNT, "USD", "tok_new")
