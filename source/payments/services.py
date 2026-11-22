@@ -35,25 +35,11 @@ class PaymentService:
         if already_paid:
             return already_paid
 
-        try:
-            response = self._gateway.charge(amount, currency, card_token)
-        except GatewayUnavailableError as exc:
-            raise PaymentProcessingError("Pasarela no disponible.") from exc
-
+        response = self._charge(amount, currency, card_token)
         payment = self._to_payment(order_id, amount, currency, response)
-
-        try:
-            self._repository.save(payment)
-        except Exception as exc:
-            raise PaymentProcessingError("Error al guardar el pago.") from exc
-
+        self._persist(payment)
         if payment.is_approved:
-            try:
-                self._notifier.send_receipt(payment)
-            except Exception:
-                # El cobro ya se realizó y se guardó: un fallo de correo no lo revierte
-                logger.warning("No se pudo enviar el recibo de la orden %s.",
-                            order_id, exc_info=True)
+            self._send_receipt(payment)
         return payment
 
     def _validate(self, amount: Decimal, currency: str) -> None:
@@ -66,6 +52,26 @@ class PaymentService:
     def _find_approved(self, order_id: str) -> Optional[Payment]:
         existing = self._repository.find_by_order_id(order_id)
         return existing if existing and existing.is_approved else None
+
+    def _charge(self, amount: Decimal, currency: str, card_token: str) -> GatewayResponse:
+        try:
+            return self._gateway.charge(amount, currency, card_token)
+        except GatewayUnavailableError as exc:
+            raise PaymentProcessingError("Pasarela no disponible.") from exc
+
+    def _persist(self, payment: Payment) -> None:
+        try:
+            self._repository.save(payment)
+        except Exception as exc:
+            raise PaymentProcessingError("Error al guardar el pago.") from exc
+
+    def _send_receipt(self, payment: Payment) -> None:
+        try:
+            self._notifier.send_receipt(payment)
+        except Exception:
+            # El cobro ya se realizó y se guardó: un fallo de correo no lo revierte
+            logger.warning("No se pudo enviar el recibo de la orden %s.",
+                        payment.order_id, exc_info=True)
 
     @staticmethod
     def _to_payment(order_id: str, amount: Decimal, currency: str,
