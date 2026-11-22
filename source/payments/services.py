@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from .models import Payment, PaymentStatus
+from .models import GatewayResponse, Payment, PaymentStatus
 from .ports import PaymentGateway, PaymentRepository, ReceiptNotifier
 
 
@@ -16,7 +16,12 @@ class PaymentService:
     def process_payment(self, order_id: str, amount: Decimal,
                         currency: str, card_token: str) -> Payment:
         response = self._gateway.charge(amount, currency, card_token)
-        payment = Payment(order_id, amount, currency,
-                        PaymentStatus.APPROVED, response.transaction_id)
+        payment = self._to_payment(order_id, amount, currency, response)
         self._repository.save(payment)
         return payment
+
+    @staticmethod
+    def _to_payment(order_id: str, amount: Decimal, currency: str,
+                    response: GatewayResponse) -> Payment:
+        return Payment(order_id, amount, currency, PaymentStatus.APPROVED,
+                    transaction_id=response.transaction_id)

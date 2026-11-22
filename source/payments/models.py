@@ -1,4 +1,7 @@
+from dataclasses import dataclass
+from decimal import Decimal
 from enum import Enum
+from typing import Optional
 
 
 class PaymentStatus(str, Enum):
@@ -6,19 +9,20 @@ class PaymentStatus(str, Enum):
     DECLINED = "DECLINED"
 
 
+@dataclass(frozen=True)
 class GatewayResponse:
-    def __init__(self, approved: bool, transaction_id=None, reason=None):
-        self.approved = approved
-        self.transaction_id = transaction_id
-        self.reason = reason
+    """Respuesta de la pasarela de pago externa."""
+    approved: bool
+    transaction_id: Optional[str] = None
+    reason: Optional[str] = None
 
 
+@dataclass(frozen=True)
 class Payment:
-    def __init__(self, order_id, amount, currency, status,
-            transaction_id=None, reason=None):
-        self.order_id = order_id
-        self.amount = amount
-        self.currency = currency
-        self.status = status
-        self.transaction_id = transaction_id
-        self.reason = reason
+    """Resultado inmutable del procesamiento de un pago."""
+    order_id: str
+    amount: Decimal
+    currency: str
+    status: PaymentStatus
+    transaction_id: Optional[str] = None
+    reason: Optional[str] = None

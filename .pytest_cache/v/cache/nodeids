@@ -1,3 +1,4 @@
 [
-  "tests/test_proceso_pago.py::TestApprovedPayment::test_approved_payment_is_saved_and_returned"
+  "tests/test_proceso_pago.py::TestApprovedPayment::test_approved_payment_is_saved_and_returned",
+  "tests/test_process_payment.py::TestApprovedPayment::test_approved_payment_is_saved_and_returned"
 ]
