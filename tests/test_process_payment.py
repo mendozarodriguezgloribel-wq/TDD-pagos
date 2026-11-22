@@ -107,3 +107,37 @@ class TestIdempotency:
 
         assert payment.status == PaymentStatus.APPROVED
         gateway.charge.assert_called_once_with(AMOUNT, "USD", "tok_new")
+
+
+class TestExternalFailures:
+    def test_gateway_unavailable_raises_processing_error(
+            self, service, gateway, repository, notifier):
+        # Stub de fallo: simula una caída técnica de la pasarela
+        gateway.charge.side_effect = GatewayUnavailableError("timeout")
+
+        with pytest.raises(PaymentProcessingError):
+            service.process_payment("ORD-06", AMOUNT, "USD", "tok_visa")
+
+        gateway.charge.assert_called_once()
+        repository.save.assert_not_called()
+        notifier.send_receipt.assert_not_called()
+
+    def test_repository_failure_raises_processing_error_without_receipt(
+            self, service, gateway, repository, notifier):
+        gateway.charge.return_value = GatewayResponse(approved=True, transaction_id="txn_7")
+        repository.save.side_effect = ConnectionError("base de datos caída")
+
+        with pytest.raises(PaymentProcessingError):
+            service.process_payment("ORD-07", AMOUNT, "USD", "tok_visa")
+
+        notifier.send_receipt.assert_not_called()
+
+    def test_receipt_failure_does_not_break_approved_payment(
+            self, service, gateway, repository, notifier):
+        gateway.charge.return_value = GatewayResponse(approved=True, transaction_id="txn_8")
+        notifier.send_receipt.side_effect = RuntimeError("servidor SMTP caído")
+
+        payment = service.process_payment("ORD-08", AMOUNT, "USD", "tok_visa")
+
+        assert payment.status == PaymentStatus.APPROVED
+        repository.save.assert_called_once_with(payment)
