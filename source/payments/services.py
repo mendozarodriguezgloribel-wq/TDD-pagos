@@ -85,6 +85,6 @@ class PaymentService:
     @staticmethod
     def _to_payment(order_id: str, amount: Decimal, currency: str,
                     response: GatewayResponse) -> Payment:
-        status = PaymentStatus.APPROVED if response.approved else PaymentStatus.DECLINED
+        status =PaymentStatus.APPROVED if response.approved else PaymentStatus.DECLINED
         return Payment(order_id, amount, currency, status,
                     transaction_id=response.transaction_id, reason=response.reason)
